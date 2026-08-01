@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Game #{{ game['id'] }}{% endblock %}
+{% block content %}
+
+<div id="status-banner" class="status-banner" style="display:none;"></div>
+<div id="game-over-actions" class="game-over-actions" style="display:none;">
+  <a class="btn btn-solid" href="{{ url_for('index') }}">Back to homepage</a>
+  {% if white['id'] == black['id'] %}
+    <form method="post" action="{{ url_for('local_start') }}"><button class="btn btn-ghost" type="submit">Play again</button></form>
+  {% else %}
+    <form method="post" action="{{ url_for('create_game') }}"><button class="btn btn-ghost" type="submit">New rated game</button></form>
+  {% endif %}
+  <a class="btn btn-ghost" href="{{ url_for('leaderboard') }}">View rankings</a>
+</div>
+
+<div class="game-layout">
+  <div class="board-wrap">
+    <div id="board" class="board"></div>
+    <div id="promo-picker" class="promo-row" style="display:none;">
+      <button data-p="q">&#9819;</button>
+      <button data-p="r">&#9814;</button>
+      <button data-p="b">&#9815;</button>
+      <button data-p="n">&#9816;</button>
+    </div>
+  </div>
+
+  <div class="side-panel">
+    <div class="card">
+      {% if white['id'] == black['id'] %}
+        <div class="player-row" id="row-black">
+          <span>&#9822; Black</span>
+          <span class="mono clock" id="clock-black">&ndash;</span>
+        </div>
+        <div class="player-row" id="row-white">
+          <span>&#9812; White</span>
+          <span class="mono clock" id="clock-white">&ndash;</span>
+        </div>
+      {% else %}
+        <div class="player-row" id="row-black">
+          <span>&#9822; {{ black['username'] if black else 'waiting for opponent...' }}</span>
+          <span style="display:flex; gap:0.7rem; align-items:center;">
+            {% if black %}<span class="mono">{{ black['elo'] }}</span>{% endif %}
+            <span class="mono clock" id="clock-black">&ndash;</span>
+          </span>
+        </div>
+        <div class="player-row" id="row-white">
+          <span>&#9812; {{ white['username'] }}</span>
+          <span style="display:flex; gap:0.7rem; align-items:center;">
+            <span class="mono">{{ white['elo'] }}</span>
+            <span class="mono clock" id="clock-white">&ndash;</span>
+          </span>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:1rem;">Moves</h2>
+      <div id="move-list" class="move-list"></div>
+    </div>
+
+    {% if white['id'] != black['id'] and game['status'] == 'ongoing' %}
+    <div class="card">
+      <button class="btn btn-danger" id="resign-btn">Resign</button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  window.GAME_ID = {{ game['id'] }};
+  window.CURRENT_USER_ID = {{ user['id'] if user else 'null' }};
+  window.WHITE_ID = {{ game['white_id'] }};
+  window.BLACK_ID = {{ game['black_id'] if game['black_id'] else 'null' }};
+  window.IS_LOCAL = {{ 'true' if white['id'] == black['id'] else 'false' }};
+</script>
+<script src="{{ url_for('static', filename='js/board.js') }}"></script>
+{% endblock %}
