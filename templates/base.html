@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% block title %}Knight's Ledger{% endblock %}</title>
+<title>{% block title %}Ledger Chess{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -11,12 +11,13 @@
 <body>
 <header class="site-header">
   <a class="brand" href="{{ url_for('index') }}">
-    <span class="brand-mark">&#9814;</span> Knight's Ledger
+    <span class="brand-mark">&#9814;</span> Ledger Chess
   </a>
   <nav class="site-nav">
     <a href="{{ url_for('index') }}">Home</a>
     <a href="{{ url_for('leaderboard') }}">Rankings</a>
     <a href="{{ url_for('tournaments_list') }}">Tournaments</a>
+    <a href="{{ url_for('puzzles_page') }}">Puzzles</a>
     <a href="{{ url_for('local_play') }}">Practice board</a>
   </nav>
   <div class="site-user">

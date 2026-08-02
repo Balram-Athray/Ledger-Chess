@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Knight's Ledger{% endblock %}
+{% block title %}Ledger Chess{% endblock %}
 {% block content %}
 
 <section class="hero">
@@ -41,6 +41,33 @@
             <option value="rapid15+10">15 min | +10s</option>
           </select>
           <button class="btn btn-solid" type="submit">Create a new rated game</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Play vs the computer</h2>
+        <p style="color:var(--ink-muted); font-size:0.9rem; margin-top:-0.4rem;">
+          You play White. No ELO stakes &mdash; just for practice.
+        </p>
+        <form method="post" action="{{ url_for('play_vs_bot') }}" style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+          <select name="level">
+            <option value="1">Level 1 &mdash; Beginner</option>
+            <option value="2">Level 2 &mdash; Novice</option>
+            <option value="3" selected>Level 3 &mdash; Casual</option>
+            <option value="4">Level 4 &mdash; Club player</option>
+            <option value="5">Level 5 &mdash; Solid</option>
+            <option value="6">Level 6 &mdash; Strong</option>
+            <option value="7">Level 7 &mdash; Expert</option>
+            <option value="8">Level 8 &mdash; Ruthless</option>
+          </select>
+          <select name="time_control">
+            <option value="untimed" selected>Untimed</option>
+            <option value="bullet1">1 min</option>
+            <option value="blitz3">3 min</option>
+            <option value="blitz5">5 min</option>
+            <option value="rapid10">10 min</option>
+          </select>
+          <button class="btn btn-solid" type="submit">Play the computer</button>
         </form>
       </div>
 
