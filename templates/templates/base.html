@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Ledger Chess{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="{{ url_for('index') }}">
+    <span class="brand-mark">&#9814;</span> Ledger Chess
+  </a>
+  <nav class="site-nav">
+    <a href="{{ url_for('index') }}">Home</a>
+    <a href="{{ url_for('leaderboard') }}">Rankings</a>
+    <a href="{{ url_for('tournaments_list') }}">Tournaments</a>
+    <a href="{{ url_for('puzzles_page') }}">Puzzles</a>
+    <a href="{{ url_for('local_play') }}">Practice board</a>
+  </nav>
+  <div class="site-user">
+    {% if current_user %}
+      <span class="user-elo">{{ current_user['username'] }} &middot; {{ current_user['elo'] }}</span>
+      <a class="btn btn-ghost" href="{{ url_for('logout') }}">Log out</a>
+    {% else %}
+      <a class="btn btn-ghost" href="{{ url_for('login') }}">Log in</a>
+      <a class="btn btn-solid" href="{{ url_for('register') }}">Sign up</a>
+    {% endif %}
+  </div>
+</header>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div class="flash-stack">
+      {% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<main class="page">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <span>Built for a Grade 12 Computer Science investigatory project.</span>
+</footer>
+</body>
+</html>

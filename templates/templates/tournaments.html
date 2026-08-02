@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Tournaments{% endblock %}
+{% block content %}
+<div class="eyebrow">Compete</div>
+<h1 style="font-size:1.8rem;">Tournaments</h1>
+
+{% if current_user %}
+<div class="card">
+  <h2>Start a new tournament</h2>
+  <form class="stacked" method="post" action="{{ url_for('tournaments_create') }}">
+    <div>
+      <label>Name</label>
+      <input type="text" name="name" placeholder="Class 12-B Chess Championship" required>
+    </div>
+    <div>
+      <label>Format</label>
+      <select name="format">
+        <option value="swiss">Swiss system</option>
+        <option value="round_robin">Round robin</option>
+      </select>
+    </div>
+    <div>
+      <label>Rounds (Swiss only &mdash; round robin sets this automatically)</label>
+      <input type="number" name="rounds" value="4" min="1" max="12">
+    </div>
+    <div>
+      <label>Time control (applies to every game in the tournament)</label>
+      <select name="time_control">
+        <option value="untimed">Untimed</option>
+        <option value="bullet1">1 min</option>
+        <option value="blitz3">3 min</option>
+        <option value="blitz5" selected>5 min</option>
+        <option value="rapid10">10 min</option>
+        <option value="rapid15+10">15 min | +10s</option>
+      </select>
+    </div>
+    <button class="btn btn-solid" type="submit">Create tournament</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>All tournaments</h2>
+  <table>
+    <tr><th>Name</th><th>Format</th><th>Status</th><th>Round</th><th></th></tr>
+    {% for t in tournaments %}
+    <tr>
+      <td>{{ t['name'] }}</td>
+      <td>{{ 'Swiss' if t['format']=='swiss' else 'Round robin' }}</td>
+      <td><span class="pill pill-{{ t['status'] }}">{{ t['status'] }}</span></td>
+      <td class="mono">{{ t['current_round'] }}/{{ t['total_rounds'] }}</td>
+      <td><a class="btn btn-ghost" href="{{ url_for('tournament_detail', tid=t['id']) }}">View</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" style="color:var(--ink-muted)">No tournaments yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

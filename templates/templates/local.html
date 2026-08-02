@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Practice board{% endblock %}
+{% block content %}
+<div class="eyebrow">No ELO stakes</div>
+<h1 style="font-size:1.8rem;">Pass-and-play practice board</h1>
+<p style="color:var(--ink-muted); max-width:55ch;">
+  Play both sides on one screen &mdash; useful for testing the rules engine
+  (castling, en passant, promotion, checkmate detection) without affecting anyone's rating.
+</p>
+{% if current_user %}
+  <form method="post" action="{{ url_for('local_start') }}" style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+    <select name="time_control">
+      <option value="untimed" selected>Untimed</option>
+      <option value="bullet1">1 min</option>
+      <option value="blitz3">3 min</option>
+      <option value="blitz5">5 min</option>
+      <option value="rapid10">10 min</option>
+      <option value="rapid15+10">15 min | +10s</option>
+    </select>
+    <button class="btn btn-solid" type="submit">Start a practice game</button>
+  </form>
+{% else %}
+  <p><a class="btn btn-solid" href="{{ url_for('login') }}">Log in to start a practice game</a></p>
+{% endif %}
+{% endblock %}
