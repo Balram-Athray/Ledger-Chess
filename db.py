@@ -39,6 +39,8 @@ CREATE TABLE IF NOT EXISTS games (
     white_time_left REAL NOT NULL DEFAULT 0,
     black_time_left REAL NOT NULL DEFAULT 0,
     turn_started_at TEXT,                     -- when the current side to move's clock started running
+    is_bot INTEGER NOT NULL DEFAULT 0,        -- 1 if this is a "play vs computer" game
+    bot_level INTEGER,                        -- 1 (weakest) - 8 (strongest); bot always plays Black
     FOREIGN KEY(white_id) REFERENCES users(id),
     FOREIGN KEY(black_id) REFERENCES users(id)
 );
@@ -75,6 +77,16 @@ CREATE TABLE IF NOT EXISTS tournament_matches (
     result TEXT,                -- 'white' / 'black' / 'draw' / NULL (pending)
     FOREIGN KEY(tournament_id) REFERENCES tournaments(id)
 );
+
+CREATE TABLE IF NOT EXISTS puzzles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    difficulty TEXT NOT NULL,
+    board_json TEXT NOT NULL,
+    turn TEXT NOT NULL,
+    solution_json TEXT NOT NULL,   -- list of acceptable solution move UCIs
+    title TEXT,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -104,6 +116,8 @@ def _migrate(conn):
         ("games", "white_time_left", "REAL NOT NULL DEFAULT 0"),
         ("games", "black_time_left", "REAL NOT NULL DEFAULT 0"),
         ("games", "turn_started_at", "TEXT"),
+        ("games", "is_bot", "INTEGER NOT NULL DEFAULT 0"),
+        ("games", "bot_level", "INTEGER"),
         ("tournaments", "time_control_seconds", "INTEGER NOT NULL DEFAULT 0"),
         ("tournaments", "increment_seconds", "INTEGER NOT NULL DEFAULT 0"),
     ]
@@ -172,14 +186,17 @@ def update_user_rating(user_id, new_elo, result):
 # ------------------------------------------------------------------ games --
 
 def create_game(white_id, black_id, state_dict, tournament_match_id=None,
-                 time_control_seconds=0, increment_seconds=0):
+                 time_control_seconds=0, increment_seconds=0,
+                 is_bot=0, bot_level=None):
     conn = get_db()
     cur = conn.execute(
         "INSERT INTO games (white_id, black_id, state_json, created_at, tournament_match_id, "
-        "time_control_seconds, increment_seconds, white_time_left, black_time_left, turn_started_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "time_control_seconds, increment_seconds, white_time_left, black_time_left, turn_started_at, "
+        "is_bot, bot_level) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (white_id, black_id, json.dumps(state_dict), now(), tournament_match_id,
-         time_control_seconds, increment_seconds, time_control_seconds, time_control_seconds, now()),
+         time_control_seconds, increment_seconds, time_control_seconds, time_control_seconds, now(),
+         is_bot, bot_level),
     )
     conn.commit()
     game_id = cur.lastrowid
@@ -405,3 +422,25 @@ def previous_opponents(tid, user_id):
         elif r["black_id"] == user_id and r["white_id"]:
             opponents.add(r["white_id"])
     return opponents
+
+
+# --------------------------------------------------------------- puzzles --
+
+def create_puzzle(difficulty, board_grid, turn, solution_ucis, title=None):
+    conn = get_db()
+    cur = conn.execute(
+        "INSERT INTO puzzles (difficulty, board_json, turn, solution_json, title, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (difficulty, json.dumps(board_grid), turn, json.dumps(solution_ucis), title, now()),
+    )
+    conn.commit()
+    pid = cur.lastrowid
+    conn.close()
+    return pid
+
+
+def get_puzzle(puzzle_id):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM puzzles WHERE id = ?", (puzzle_id,)).fetchone()
+    conn.close()
+    return row

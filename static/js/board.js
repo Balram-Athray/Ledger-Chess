@@ -174,7 +174,7 @@ function renderStatus() {
     const turnName = currentState.turn === "w" ? "White" : "Black";
     text = (currentState.in_check ? `${turnName} is in check. ` : "") + `${turnName} to move.`;
     if (window.IS_LOCAL) text += " (pass-and-play)";
-    else if (!isMyTurn()) text += " Waiting for opponent...";
+    else if (!isMyTurn()) text += window.IS_BOT ? " Engine is thinking..." : " Waiting for opponent...";
   }
   statusBanner.innerHTML = text;
   statusBanner.style.display = "block";

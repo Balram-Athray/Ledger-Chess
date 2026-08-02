@@ -9,9 +9,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from copy import deepcopy
 
 import db
-from chess_engine import Board
+from chess_engine import Board, sq_name
 import elo
 import tournament as tourney
+import bot
+import puzzle
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-this-in-production")
@@ -73,8 +75,8 @@ def apply_game_result(game_row, status, reason):
     and (if this game belongs to a tournament match) the tournament standings."""
     db.finish_game(game_row["id"], status, reason)
 
-    if game_row["white_id"] == game_row["black_id"]:
-        # local pass-and-play practice game -- no ELO stakes
+    if game_row["white_id"] == game_row["black_id"] or game_row["is_bot"]:
+        # local pass-and-play or a "vs computer" game -- no ELO stakes
         return
 
     white = db.get_user_by_id(game_row["white_id"])
@@ -216,6 +218,20 @@ def local_play():
     return render_template("local.html")
 
 
+@app.route("/play/vs-bot", methods=["POST"])
+@login_required
+def play_vs_bot():
+    user = current_user()
+    level = int(request.form.get("level", 3))
+    level = max(1, min(8, level))
+    seconds, increment = parse_time_control(request.form)
+    board = Board()
+    game_id = db.create_game(user["id"], None, board.to_dict(),
+                              time_control_seconds=seconds, increment_seconds=increment,
+                              is_bot=1, bot_level=level)
+    return redirect(url_for("game_view", game_id=game_id))
+
+
 @app.route("/local/start", methods=["POST"])
 @login_required
 def local_start():
@@ -325,7 +341,7 @@ def make_move(game_id):
 
     if game["status"] != "ongoing":
         return jsonify({"error": "game is over"}), 400
-    if game["black_id"] is None:
+    if game["black_id"] is None and not game["is_bot"]:
         return jsonify({"error": "waiting for an opponent"}), 400
 
     state = json.loads(game["state_json"])
@@ -355,6 +371,28 @@ def make_move(game_id):
         apply_game_result(game, winner, "checkmate")
     elif status in ("stalemate", "draw_50move", "draw_insufficient"):
         apply_game_result(game, "draw", status)
+
+    # In a bot game, the bot (always Black) replies immediately, synchronously,
+    # within this same request -- the frontend just sees the updated position
+    # (including the bot's reply) on its next state fetch, no separate polling
+    # or endpoint needed for the bot's turn.
+    if game["is_bot"] and status == "ongoing" and board.turn == "b":
+        game = db.get_game(game_id)  # reload -- clock settlement above just changed it
+        if not check_and_apply_timeout(game):
+            bot_move = bot.choose_move(board, "b", game["bot_level"])
+            if bot_move is not None:
+                bot_move_applied = board.make_move(sq_name(*bot_move.frm), sq_name(*bot_move.to),
+                                                    promotion=bot_move.promotion)
+                bot_state = board.to_dict()
+                bot_state["history"] = new_state["history"] + [bot_move_applied.to_uci()]
+                db.update_game_state(game_id, bot_state)
+                settle_clock_after_move(game, "b")
+
+                status = board.game_status()
+                if status == "checkmate":
+                    apply_game_result(game, "black_won", "checkmate")
+                elif status in ("stalemate", "draw_50move", "draw_insufficient"):
+                    apply_game_result(game, "draw", status)
 
     return jsonify({"ok": True, "status": status})
 
@@ -465,6 +503,74 @@ def tournament_match_play(mid):
                               increment_seconds=t["increment_seconds"])
     db.set_match_result(mid, None, game_id=game_id)
     return redirect(url_for("game_view", game_id=game_id))
+
+
+# ---------------------------------------------------------------- puzzles --
+
+@app.route("/puzzles")
+@login_required
+def puzzles_page():
+    return render_template("puzzles.html")
+
+
+@app.route("/api/puzzle/new")
+@login_required
+def puzzle_new():
+    difficulty = request.args.get("difficulty", "easy")
+    if difficulty not in ("easy", "medium", "hard"):
+        difficulty = "easy"
+
+    generated = puzzle.generate_puzzle(difficulty)
+    puzzle_id = db.create_puzzle(generated["difficulty"], generated["board"], generated["turn"],
+                                  generated["solution"], generated.get("title"))
+
+    board = Board.from_dict({
+        "board": generated["board"], "turn": generated["turn"],
+        "castling": {"wK": False, "wQ": False, "bK": False, "bQ": False},
+        "en_passant": None, "halfmove_clock": 0, "fullmove_number": 1,
+    })
+    return jsonify({
+        "puzzle_id": puzzle_id,
+        "board": board.board,
+        "turn": generated["turn"],
+        "difficulty": generated["difficulty"],
+        "title": generated.get("title"),
+        "legal_moves": board.legal_moves_dict_for_frontend(),
+        "in_check": board.is_in_check(board.turn),
+    })
+
+
+@app.route("/api/puzzle/<int:puzzle_id>/attempt", methods=["POST"])
+@login_required
+def puzzle_attempt(puzzle_id):
+    row = db.get_puzzle(puzzle_id)
+    if row is None:
+        return jsonify({"error": "not found"}), 404
+
+    data = request.get_json(force=True)
+    frm, to, promotion = data.get("from"), data.get("to"), data.get("promotion")
+
+    board = Board.from_dict({
+        "board": json.loads(row["board_json"]), "turn": row["turn"],
+        "castling": {"wK": False, "wQ": False, "bK": False, "bQ": False},
+        "en_passant": None, "halfmove_clock": 0, "fullmove_number": 1,
+    })
+    move = board.make_move(frm, to, promotion=promotion.upper() if promotion else None)
+    if move is None:
+        return jsonify({"error": "illegal move"}), 400
+
+    solution = json.loads(row["solution_json"])
+    submitted_uci = move.to_uci()
+    matches_solution = any(submitted_uci[:4] == s[:4] for s in solution)
+    also_delivers_mate = row["difficulty"] == "easy" and board.game_status() == "checkmate"
+    correct = matches_solution or also_delivers_mate
+
+    return jsonify({
+        "correct": correct,
+        "solution": solution,
+        "resulting_board": board.board,
+        "resulting_status": board.game_status(),
+    })
 
 
 if __name__ == "__main__":

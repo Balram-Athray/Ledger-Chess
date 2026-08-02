@@ -332,6 +332,9 @@ tr:last-child td { border-bottom: none; }
   display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1.2rem;
 }
 
+.difficulty-row { display: flex; gap: 0.6rem; margin: 1rem 0; flex-wrap: wrap; }
+.diff-btn.diff-active { border-color: var(--gold); color: var(--gold-bright); background: var(--surface-2); }
+
 .promo-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 .promo-row button { font-size: 1.6rem; padding: 0.2rem 0.6rem; }
 

@@ -7,6 +7,11 @@
   <a class="btn btn-solid" href="{{ url_for('index') }}">Back to homepage</a>
   {% if white['id'] == black['id'] %}
     <form method="post" action="{{ url_for('local_start') }}"><button class="btn btn-ghost" type="submit">Play again</button></form>
+  {% elif game['is_bot'] %}
+    <form method="post" action="{{ url_for('play_vs_bot') }}">
+      <input type="hidden" name="level" value="{{ game['bot_level'] }}">
+      <button class="btn btn-ghost" type="submit">Rematch (Level {{ game['bot_level'] }})</button>
+    </form>
   {% else %}
     <form method="post" action="{{ url_for('create_game') }}"><button class="btn btn-ghost" type="submit">New rated game</button></form>
   {% endif %}
@@ -37,7 +42,12 @@
         </div>
       {% else %}
         <div class="player-row" id="row-black">
-          <span>&#9822; {{ black['username'] if black else 'waiting for opponent...' }}</span>
+          <span>&#9822;
+            {% if game['is_bot'] %}Engine &mdash; Level {{ game['bot_level'] }}
+            {% elif black %}{{ black['username'] }}
+            {% else %}waiting for opponent...
+            {% endif %}
+          </span>
           <span style="display:flex; gap:0.7rem; align-items:center;">
             {% if black %}<span class="mono">{{ black['elo'] }}</span>{% endif %}
             <span class="mono clock" id="clock-black">&ndash;</span>
@@ -72,6 +82,7 @@
   window.WHITE_ID = {{ game['white_id'] }};
   window.BLACK_ID = {{ game['black_id'] if game['black_id'] else 'null' }};
   window.IS_LOCAL = {{ 'true' if white['id'] == black['id'] else 'false' }};
+  window.IS_BOT = {{ 'true' if game['is_bot'] else 'false' }};
 </script>
 <script src="{{ url_for('static', filename='js/board.js') }}"></script>
 {% endblock %}
