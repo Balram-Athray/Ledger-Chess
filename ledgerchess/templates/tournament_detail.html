@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ t['name'] }}{% endblock %}
+{% block content %}
+<div class="eyebrow">{{ 'Swiss system' if t['format']=='swiss' else 'Round robin' }} &middot; <span class="pill pill-{{ t['status'] }}">{{ t['status'] }}</span></div>
+<h1 style="font-size:1.8rem;">{{ t['name'] }}</h1>
+
+<div class="grid-2">
+  <div>
+    {% if t['status'] == 'pending' %}
+      <div class="card">
+        <h2>Players ({{ players|length }})</h2>
+        {% for p in players %}
+          <div class="player-row"><span>{{ p['username'] }}</span><span class="mono">{{ p['elo'] }}</span></div>
+        {% else %}
+          <p style="color:var(--ink-muted)">No one has joined yet.</p>
+        {% endfor %}
+        {% if user %}
+          <form method="post" action="{{ url_for('tournament_join', tid=t['id']) }}" style="margin-top:0.8rem; display:inline-block; margin-right:0.6rem;">
+            <button class="btn btn-ghost" type="submit">Join tournament</button>
+          </form>
+          <form method="post" action="{{ url_for('tournament_start', tid=t['id']) }}" style="display:inline-block;">
+            <button class="btn btn-solid" type="submit">Start tournament</button>
+          </form>
+        {% endif %}
+      </div>
+    {% else %}
+      {% for round_num, matches in by_round.items()|sort %}
+      <div class="round-block">
+        <h3>Round {{ round_num }}</h3>
+        {% for m in matches %}
+          <div class="match-row">
+            <span>
+              {{ m['white_name'] }}
+              {% if m['black_name'] %}<span class="vs">vs</span>{{ m['black_name'] }}{% else %}<span class="vs">&mdash; bye</span>{% endif %}
+            </span>
+            <span>
+              {% if m['result'] == 'bye' %}
+                <span class="pill">bye</span>
+              {% elif m['result'] %}
+                <span class="pill pill-completed">{{ m['result'] }}</span>
+              {% elif user and user['id'] in [m['white_id'], m['black_id']] %}
+                <form method="post" action="{{ url_for('tournament_match_play', mid=m['id']) }}">
+                  <button class="btn btn-ghost" type="submit">{{ 'Continue' if m['game_id'] else 'Play' }}</button>
+                </form>
+              {% else %}
+                <span class="pill pill-ongoing">pending</span>
+              {% endif %}
+            </span>
+          </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Standings</h2>
+      <table>
+        <tr><th>#</th><th>Player</th><th>Score</th></tr>
+        {% for p in players|sort(attribute='score', reverse=True) %}
+        <tr>
+          <td class="{{ 'rank-1' if loop.index==1 }}">{{ loop.index }}</td>
+          <td>{{ p['username'] }}</td>
+          <td class="mono">{{ p['score'] }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
